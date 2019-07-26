@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 import bs4
 import datetime
 import requests
@@ -8,20 +8,21 @@ XLSX_FILE_NAME: str = 'Funda.xlsx'
 
 
 def write_row_in_xlsx(workbook, worksheet, row_num: int, index: int, borrower: str, annual_rate: float, duration: int,
-                      partially_covered: bool, limit: int, credit_rating: int, info: str):
-    intro_format_dict: dict = {'align': 'left', 'text_wrap': True, 'valign': 'top'}
-    intro_format: xlsxwriter.workbook.Format = workbook.add_format(intro_format_dict)
-    non_intro_format_dict: dict = {'align': 'center', 'valign': 'vcenter'}
-    non_intro_format: xlsxwriter.workbook.Format = workbook.add_format(non_intro_format_dict)
+                      partially_covered: bool, limit: int, credit_rating: int, report: str, info: str):
+    multi_line_format_dict: dict = {'align': 'left', 'text_wrap': True, 'valign': 'top'}
+    multi_line_format: xlsxwriter.workbook.Format = workbook.add_format(multi_line_format_dict)
+    single_line_format_dict: dict = {'align': 'center', 'valign': 'vcenter'}
+    single_line_format: xlsxwriter.workbook.Format = workbook.add_format(single_line_format_dict)
 
-    worksheet.write_number(row_num, 0, index, non_intro_format)
-    worksheet.write(row_num, 1, borrower, non_intro_format)
-    worksheet.write(row_num, 2, annual_rate, non_intro_format)
-    worksheet.write_number(row_num, 3, duration, non_intro_format)
-    worksheet.write(row_num, 4, '부분 보호' if partially_covered else '전액 보호', non_intro_format)
-    worksheet.write_number(row_num, 5, limit, non_intro_format)
-    worksheet.write_number(row_num, 6, credit_rating, non_intro_format)
-    worksheet.write(row_num, 7, info, intro_format)
+    worksheet.write_number(row_num, 0, index, single_line_format)
+    worksheet.write(row_num, 1, borrower, single_line_format)
+    worksheet.write(row_num, 2, annual_rate, single_line_format)
+    worksheet.write_number(row_num, 3, duration, single_line_format)
+    worksheet.write(row_num, 4, '부분 보호' if partially_covered else '전액 보호', single_line_format)
+    worksheet.write_number(row_num, 5, limit, single_line_format)
+    worksheet.write_number(row_num, 6, credit_rating, single_line_format)
+    worksheet.write(row_num, 7, report, multi_line_format)
+    worksheet.write(row_num, 8, info, multi_line_format)
 
 
 def create_custom_workbook() -> Tuple[xlsxwriter.workbook.Workbook, xlsxwriter.workbook.Worksheet]:
@@ -42,8 +43,10 @@ def create_custom_workbook() -> Tuple[xlsxwriter.workbook.Workbook, xlsxwriter.w
     worksheet.write(0, 6, 'Credit Rating', header_format)
     worksheet.set_column('A:G', 15)
     worksheet.set_column('B:B', 25)
-    worksheet.write(0, 7, 'Info', header_format)
-    worksheet.set_column('H:H', 65)
+    worksheet.write(0, 7, 'Report', header_format)
+    worksheet.set_column('H:H', 25)
+    worksheet.write(0, 8, 'Info', header_format)
+    worksheet.set_column('I:I', 65)
     return workbook, worksheet
 
 
@@ -89,12 +92,13 @@ def unsecured_bonds(detail_url: str, workbook, worksheet, row_num: int, index: s
 
     # 기존 신용대출정보(디테일 페이지 - 하단)
     history: bs4.element.Tag = detail_html_soup.find(class_='c-loan-history')
-    records = {}
+    records: Dict[str, str] = {}
     for record in history.div.table.tbody.find_all('tr'):  # record: bs4.element.ResultSet
         institution: bs4.element.Tag = record.td
         amount_tag: bs4.element.Tag = institution.next_sibling.next_sibling
         amount: str = amount_tag.span.text
         records[institution.text] = amount
+    report: List[str] = [(key + ': ' + value) for key, value in records.items()]
 
     # 상점 소개 (디테일 페이지 - 하단)
     intro_statements: bs4.element.ResultSet = detail_html_soup.find_all(class_='list_ok introduce')
@@ -103,7 +107,7 @@ def unsecured_bonds(detail_url: str, workbook, worksheet, row_num: int, index: s
         for line in block.find_all('li'):  # line: bs4.element.ResultSet
             intros.append(line.text)
     write_row_in_xlsx(workbook, worksheet, row_num, int(index), borrower, float(annual_rate), duration,
-                      partially_covered, limit, credit_rating, '\n'.join(intros))
+                      partially_covered, limit, credit_rating, '\n'.join(report), '\n'.join(intros))
 
 
 def main():
@@ -137,7 +141,7 @@ def main():
         page_info: tuple = (detail_url, workbook, worksheet, row_num, index, annual_rate, duration)
         page_info_list.append(page_info)
         unsecured_bonds(*page_info)
-    worksheet.set_default_row(20)  # partially show the second row of store info
+    worksheet.set_default_row(35)  # partially show the third row of store info
     worksheet.set_row(0, 14.4)  # reset header row height
     workbook.close()
 
