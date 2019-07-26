@@ -28,7 +28,7 @@ product_titles: bs4.element.ResultSet = products.find_all('span', class_='mercha
 
 # Create Excel workbook
 workbook = xlsxwriter.Workbook(XLSX_FILE_NAME)
-now: str = datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')
+now: str = datetime.datetime.today().strftime('%Y%m%d %H%M%S')
 worksheet = workbook.add_worksheet(now)
 
 # Write headers in xlsx
