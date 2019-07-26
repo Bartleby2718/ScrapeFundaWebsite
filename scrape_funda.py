@@ -1,12 +1,51 @@
 import bs4
+import datetime
 import requests
+import xlsxwriter
 
+
+def write_row_in_xlsx(workbook, worksheet, row_num: int, index: int, borrower: str, annual_rate: float, duration: int,
+                      partially_covered: bool, limit: int, credit_rating: int, info: str):
+    intro_format = workbook.add_format({'align': 'left', 'text_wrap': True, 'valign': 'top'})
+    non_intro_format = workbook.add_format({'align': 'center', 'valign': 'vcenter'})
+
+    worksheet.write_number(row_num, 0, index, non_intro_format)
+    worksheet.write(row_num, 1, borrower, non_intro_format)
+    worksheet.write(row_num, 2, annual_rate, non_intro_format)
+    worksheet.write_number(row_num, 3, duration, non_intro_format)
+    worksheet.write(row_num, 4, '부분 보호' if partially_covered else '전액 보호', non_intro_format)
+    worksheet.write_number(row_num, 5, limit, non_intro_format)
+    worksheet.write_number(row_num, 6, credit_rating, non_intro_format)
+    worksheet.write(row_num, 7, info, intro_format)
+
+
+XLSX_FILE_NAME: str = 'Funda.xlsx'
 list_url: str = 'https://www.funda.kr/v2/invest/list'
 list_response: requests.Response = requests.get(list_url)
 list_html_soup: bs4.element.ResultSet = bs4.BeautifulSoup(list_response.text, 'html.parser')
 products: bs4.element.Tag = list_html_soup.find('div', id='general_merchandise')
 product_titles: bs4.element.ResultSet = products.find_all('span', class_='merchandise-idx')
+
+# Create Excel workbook
+workbook = xlsxwriter.Workbook(XLSX_FILE_NAME)
+now: str = datetime.datetime.today().strftime('%Y-%m-%d %H:%M:%S')
+worksheet = workbook.add_worksheet(now)
+
+# Write headers in xlsx
+header_format = workbook.add_format({'align': 'center', 'bold': True, 'valign': 'vcenter'})
+worksheet.write(0, 0, 'Index', header_format)
+worksheet.write(0, 1, 'Borrower', header_format)
+worksheet.write(0, 2, 'Annual Rate (%)', header_format)
+worksheet.write(0, 3, 'Duration (month)', header_format)
+worksheet.write(0, 4, 'Safe Plan', header_format)
+worksheet.write(0, 5, 'Limit', header_format)
+worksheet.write(0, 6, 'Credit Rating', header_format)
+worksheet.set_column('A:G', 25)
+worksheet.write(0, 7, 'Info', header_format)
+worksheet.set_column('H:H', 65)
+
 title: bs4.element.Tag
+row_num: int = 0
 for title in product_titles:
     body: bs4.element.Tag = title.parent.parent.parent.next_sibling.next_sibling
     children: bs4.element.ResultSet = body.find_all('div')
@@ -18,6 +57,7 @@ for title in product_titles:
     if annual_rate != '9' or duration != 3:
         continue
 
+    row_num += 1
     # 호수 (리스트 페이지)
     index: str = title.text.replace('호', '')
 
@@ -73,3 +113,8 @@ for title in product_titles:
         line: bs4.element.ResultSet
         for line in block.find_all('li'):
             intros.append(line.text)
+    write_row_in_xlsx(workbook, worksheet, row_num, int(index), borrower, float(annual_rate), duration,
+                      partially_covered, limit, credit_rating, '\n'.join(intros))
+worksheet.set_default_row(20)  # partially show the second row of store info
+worksheet.set_row(0, 14.4)  # reset header row heightn
+workbook.close()
