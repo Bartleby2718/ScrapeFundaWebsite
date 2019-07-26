@@ -91,6 +91,12 @@ for title in product_titles:
     # 투자 한도 (디테일 페이지 - 우측)
     limit_tag: bs4.element.Tag = detail_html_soup.find(class_='money-range')
     limit: int = int(limit_tag.p.span.text.replace('만원', ''))
+    # 모집 금액 (디테일 페이지 - 헤더)
+    status_tag: bs4.element.Tag = detail_html_soup.find(class_='funding-status')
+    status: str = status_tag.text.replace('만원', '')
+    current: int = int(status.split('/')[0])
+    total: int = int(status.split('/')[1])
+    limit = min(limit, total - current)
 
     # KCB 신용정보 (디테일 페이지 - 하단)
     credit_rating_tag: bs4.element.Tag = detail_html_soup.find(class_='c-score_1')
