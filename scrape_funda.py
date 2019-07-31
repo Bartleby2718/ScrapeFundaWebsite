@@ -17,16 +17,16 @@ def write_row_in_xlsx(workbook, worksheet, row_num: int, index: int, borrower: s
 
     worksheet.write_number(row_num, 0, index, single_line_format)
     worksheet.write(row_num, 1, borrower, single_line_format)
-    worksheet.write(row_num, 2, annual_rate, single_line_format)
-    worksheet.write_number(row_num, 3, duration, single_line_format)
-    worksheet.write(row_num, 4, safe_plan, single_line_format)
+    worksheet.write(row_num, 2, funda_rating, single_line_format)
+    worksheet.write(row_num, 3, annual_rate, single_line_format)
+    worksheet.write_number(row_num, 4, duration, single_line_format)
     worksheet.write_number(row_num, 5, limit, single_line_format)
-    worksheet.write_number(row_num, 6, credit_rating, single_line_format)
-    worksheet.write(row_num, 8, info, multi_line_format)
-    worksheet.write(row_num, 9, funda_rating, single_line_format)
-    worksheet.write_number(row_num, 10, months_in_operation, single_line_format)
-    worksheet.write_number(row_num, 11, bank_or_insurance, single_line_format)
-    worksheet.write_number(row_num, 12, card_or_savings_bank, single_line_format)
+    worksheet.write(row_num, 6, safe_plan, single_line_format)
+    worksheet.write_number(row_num, 7, months_in_operation, single_line_format)
+    worksheet.write_number(row_num, 8, credit_rating, single_line_format)
+    worksheet.write_number(row_num, 9, bank_or_insurance, single_line_format)
+    worksheet.write_number(row_num, 10, card_or_savings_bank, single_line_format)
+    worksheet.write(row_num, 11, info, multi_line_format)
 
 
 def create_custom_workbook() -> Tuple[xlsxwriter.workbook.Workbook, xlsxwriter.workbook.Worksheet]:
@@ -38,25 +38,30 @@ def create_custom_workbook() -> Tuple[xlsxwriter.workbook.Workbook, xlsxwriter.w
     # Write headers in xlsx
     header_format_dict: dict = {'align': 'center', 'bold': True, 'valign': 'vcenter'}
     header_format: xlsxwriter.workbook.Format = workbook.add_format(header_format_dict)
-    worksheet.write(0, 0, 'Index', header_format)
-    worksheet.write(0, 1, 'Borrower', header_format)
-    worksheet.write(0, 2, 'Annual Rate (%)', header_format)
-    worksheet.write(0, 3, 'Duration (month)', header_format)
-    worksheet.write(0, 4, 'Safe Plan', header_format)
-    worksheet.write(0, 5, 'Limit', header_format)
-    worksheet.write(0, 6, 'Credit Rating', header_format)
-    worksheet.set_column('A:G', 15)
-    worksheet.set_column('B:B', 25)
-    worksheet.write(0, 8, 'Info', header_format)
-    worksheet.set_column('I:I', 65)
-    worksheet.write(0, 9, 'Funda Rating', header_format)
+    worksheet.write(0, 0, '호수', header_format)
+    worksheet.set_column(0, 0, 5)
+    worksheet.write(0, 1, '대출자', header_format)
+    worksheet.set_column(1, 1, 25)
+    worksheet.write(0, 2, '펀다 등급', header_format)
+    worksheet.set_column(2, 2, 10)
+    worksheet.write(0, 3, '연 수익률(세전, %)', header_format)
+    worksheet.set_column(3, 3, 20)
+    worksheet.write(0, 4, '투자 기간(개월)', header_format)
+    worksheet.set_column(4, 4, 15)
+    worksheet.write(0, 5, '투자 한도', header_format)
+    worksheet.set_column(5, 5, 10)
+    worksheet.write(0, 6, '세이프플랜', header_format)
+    worksheet.set_column(6, 6, 10)
+    worksheet.write(0, 7, '운영 기간', header_format)
+    worksheet.set_column(7, 7, 10)
+    worksheet.write(0, 8, 'KCB신용등급', header_format)
+    worksheet.set_column(8, 8, 15)
+    worksheet.write(0, 9, '은행, 보험', header_format)
     worksheet.set_column(9, 9, 15)
-    worksheet.write(0, 10, 'Months in Operation', header_format)
-    worksheet.set_column(10, 10, 25)
-    worksheet.write(0, 11, 'Banks, Insurance', header_format)
-    worksheet.set_column(11, 11, 25)
-    worksheet.write(0, 12, 'Card, Savings Bank', header_format)
-    worksheet.set_column(12, 12, 25)
+    worksheet.write(0, 10, '카드, 저축은행', header_format)
+    worksheet.set_column(10, 10, 15)
+    worksheet.write(0, 11, '상점 소개', header_format)
+    worksheet.set_column(11, 11, 65)
     return workbook, worksheet
 
 
@@ -165,7 +170,7 @@ def main():
         # 기간 (리스트 페이지)
         duration: int = int(children[3].dd.text.replace('개월', ''))
         # I want only the bonds with the annual rate of 9% and the duration of 3 months
-        if annual_rate != '9' or duration != 3:
+        if annual_rate != '9':
             continue
         row_num += 1
 
