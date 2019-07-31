@@ -8,7 +8,8 @@ XLSX_FILE_NAME: str = 'Funda.xlsx'
 
 
 def write_row_in_xlsx(workbook, worksheet, row_num: int, index: int, borrower: str, annual_rate: float, duration: int,
-                      partially_covered: bool, limit: int, credit_rating: int, report: str, info: str):
+                      safe_plan: str, limit: int, credit_rating: int, report: str, info: str, funda_rating: str,
+                      months_in_operation: int):
     multi_line_format_dict: dict = {'align': 'left', 'text_wrap': True, 'valign': 'top'}
     multi_line_format: xlsxwriter.workbook.Format = workbook.add_format(multi_line_format_dict)
     single_line_format_dict: dict = {'align': 'center', 'valign': 'vcenter'}
@@ -18,11 +19,13 @@ def write_row_in_xlsx(workbook, worksheet, row_num: int, index: int, borrower: s
     worksheet.write(row_num, 1, borrower, single_line_format)
     worksheet.write(row_num, 2, annual_rate, single_line_format)
     worksheet.write_number(row_num, 3, duration, single_line_format)
-    worksheet.write(row_num, 4, '부분 보호' if partially_covered else '전액 보호', single_line_format)
+    worksheet.write(row_num, 4, safe_plan, single_line_format)
     worksheet.write_number(row_num, 5, limit, single_line_format)
     worksheet.write_number(row_num, 6, credit_rating, single_line_format)
     worksheet.write(row_num, 7, report, multi_line_format)
     worksheet.write(row_num, 8, info, multi_line_format)
+    worksheet.write(row_num, 9, funda_rating, single_line_format)
+    worksheet.write_number(row_num, 10, months_in_operation, single_line_format)
 
 
 def create_custom_workbook() -> Tuple[xlsxwriter.workbook.Workbook, xlsxwriter.workbook.Worksheet]:
@@ -47,10 +50,15 @@ def create_custom_workbook() -> Tuple[xlsxwriter.workbook.Workbook, xlsxwriter.w
     worksheet.set_column('H:H', 25)
     worksheet.write(0, 8, 'Info', header_format)
     worksheet.set_column('I:I', 65)
+    worksheet.write(0, 9, 'Funda Rating', header_format)
+    worksheet.set_column(9, 9, 15)
+    worksheet.write(0, 10, 'Months in Operation', header_format)
+    worksheet.set_column(10, 10, 25)
     return workbook, worksheet
 
 
-def unsecured_bonds(detail_url: str, workbook, worksheet, row_num: int, index: str, annual_rate: str, duration: int):
+def unsecured_bonds(detail_url: str, workbook, worksheet, row_num: int, index: str, annual_rate: str, duration: int,
+                    funda_rating: str, safe_plan: str):
     detail_response: requests.Response = requests.get(detail_url)
     detail_html_soup: bs4.element.ResultSet = bs4.BeautifulSoup(detail_response.text, 'html.parser')
 
@@ -72,9 +80,9 @@ def unsecured_bonds(detail_url: str, workbook, worksheet, row_num: int, index: s
     # annual_rate: str = annual_rate_tag.span.text.replace('%!', '')
 
     # 세이프플랜 (상단)
-    safe_plan_tag: bs4.element.Tag = headers[2]
-    safe_plan_image_url = safe_plan_tag.img['src']  # 'pc_safe_icon.png'
-    partially_covered: bool = '5000' in safe_plan_image_url
+    # safe_plan_tag: bs4.element.Tag = headers[2]
+    # safe_plan_image_url = safe_plan_tag.img['src']  # 'pc_safe_icon.png'
+    # partially_covered: bool = '5000' in safe_plan_image_url
 
     # 투자 한도 (디테일 페이지 - 우측)
     limit_tag: bs4.element.Tag = detail_html_soup.find(class_='money-range')
@@ -102,12 +110,21 @@ def unsecured_bonds(detail_url: str, workbook, worksheet, row_num: int, index: s
 
     # 상점 소개 (디테일 페이지 - 하단)
     intro_statements: bs4.element.ResultSet = detail_html_soup.find_all(class_='list_ok introduce')
+    months_in_operation: int = 0
+
     intros = []
     for block in intro_statements:  # block: bs4.element.ResultSet
         for line in block.find_all('li'):  # line: bs4.element.ResultSet
-            intros.append(line.text)
+            if line.text.startswith('운영기간: '):
+                years_and_months: str = line.text[6:]
+                years = int(years_and_months[:years_and_months.find('년')])
+                months = int(years_and_months[years_and_months.find('년') + 1:years_and_months.find('개월')])
+                months_in_operation: int = 12 * years + months
+            else:
+                intros.append(line.text)
     write_row_in_xlsx(workbook, worksheet, row_num, int(index), borrower, float(annual_rate), duration,
-                      partially_covered, limit, credit_rating, '\n'.join(report), '\n'.join(intros))
+                      safe_plan, limit, credit_rating, '\n'.join(report), '\n'.join(intros),
+                      funda_rating, months_in_operation)
 
 
 def main():
@@ -124,6 +141,19 @@ def main():
         body: bs4.element.Tag = title.parent.parent.parent.next_sibling.next_sibling
         children: bs4.element.ResultSet = body.find_all('div')
 
+        # 펀다등급(리스트 페이지)
+        funda_rating_tag: bs4.element.Tag = children[0].dd
+        funda_rating: str = funda_rating_tag.text.strip()
+
+        # 상품특징 (리스트 페이지)
+        safe_plan_tag: bs4.element.Tag = children[1].dd
+        if safe_plan_tag.text == '매출우수':
+            safe_plan: str = '보호 불가'
+        elif safe_plan_tag['title'] == "세이프플랜 적립금 내에서 투자원금 전액이 보호됩니다.":
+            safe_plan: str = '전액 보호'
+        else:
+            safe_plan: str = '부분 보호'
+
         # 수익률 (리스트 페이지)
         annual_rate: str = children[2].dd.text.replace('%', '').strip()
         # 기간 (리스트 페이지)
@@ -138,7 +168,9 @@ def main():
 
         # URL
         detail_url: str = 'https://www.funda.kr/v2/invest/?page=' + index
-        page_info: tuple = (detail_url, workbook, worksheet, row_num, index, annual_rate, duration)
+        page_info: tuple = (
+            detail_url, workbook, worksheet, row_num, index, annual_rate, duration, funda_rating, safe_plan,
+        )
         page_info_list.append(page_info)
         unsecured_bonds(*page_info)
     worksheet.set_default_row(35)  # partially show the third row of store info
