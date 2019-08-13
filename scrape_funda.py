@@ -68,7 +68,7 @@ def create_custom_workbook() -> Tuple[xlsxwriter.workbook.Workbook, xlsxwriter.w
 def unsecured_bonds(detail_url: str, workbook, worksheet, row_num: int, index: str, annual_rate: str, duration: int,
                     funda_rating: str, safe_plan: str):
     detail_response: requests.Response = requests.get(detail_url)
-    detail_html_soup: bs4.element.ResultSet = bs4.BeautifulSoup(detail_response.text, 'html.parser')
+    detail_html_soup: bs4.BeautifulSoup = bs4.BeautifulSoup(detail_response.text, 'html.parser')
 
     # 호수 (디테일 페이지 - 헤더)
     # index_tag: bs4.element.Tag = detail_html_soup.find(id='invest-number')
@@ -141,7 +141,7 @@ def unsecured_bonds(detail_url: str, workbook, worksheet, row_num: int, index: s
 def main():
     list_url: str = 'https://www.funda.kr/v2/invest/list'
     list_response: requests.Response = requests.get(list_url)
-    list_html_soup: bs4.element.ResultSet = bs4.BeautifulSoup(list_response.text, 'html.parser')
+    list_html_soup: bs4.BeautifulSoup = bs4.BeautifulSoup(list_response.text, 'html.parser')
     products: bs4.element.Tag = list_html_soup.find('div', id='general_merchandise')
     product_titles: bs4.element.ResultSet = products.find_all('span', class_='merchandise-idx')
 
