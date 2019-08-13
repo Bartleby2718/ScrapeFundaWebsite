@@ -158,6 +158,8 @@ def main():
 
         # 상품특징 (리스트 페이지)
         safe_plan_tag: bs4.element.Tag = children[1].dd
+        if safe_plan_tag.text == '이벤트':
+            continue
         if safe_plan_tag.text == '매출우수':
             safe_plan: str = '보호 불가'
         elif safe_plan_tag['title'] == "세이프플랜 적립금 내에서 투자원금 전액이 보호됩니다.":
