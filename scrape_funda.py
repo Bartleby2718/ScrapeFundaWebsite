@@ -1,4 +1,5 @@
 from typing import Dict, List, Tuple
+import multiprocessing
 import bs4
 import datetime
 import requests
@@ -146,7 +147,6 @@ def main():
 
     row_num: int = 0
     page_info_list: List[tuple] = []
-    excel_rows: List[tuple] = []
     for title in product_titles:  # title: bs4.element.Tag
         body: bs4.element.Tag = title.parent.parent.parent.next_sibling.next_sibling
         children: bs4.element.ResultSet = body.find_all('div')
@@ -184,8 +184,10 @@ def main():
             detail_url, row_num, index, annual_rate, duration, funda_rating, safe_plan,
         )
         page_info_list.append(page_info)
-        excel_row: tuple = unsecured_bonds(*page_info)
-        excel_rows.append(excel_row)
+    pool = multiprocessing.Pool(10)
+    excel_rows = pool.starmap(unsecured_bonds, page_info_list)
+    pool.terminate()
+    pool.join()
     workbook, worksheet = create_custom_workbook()
     for excel_row in excel_rows:  # excel_row: tuple
         write_row_in_xlsx(workbook, worksheet, *excel_row)
