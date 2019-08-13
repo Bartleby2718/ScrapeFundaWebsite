@@ -65,7 +65,7 @@ def create_custom_workbook() -> Tuple[xlsxwriter.workbook.Workbook, xlsxwriter.w
     return workbook, worksheet
 
 
-def unsecured_bonds(detail_url: str, workbook, worksheet, row_num: int, index: str, annual_rate: str, duration: int,
+def unsecured_bonds(detail_url: str, row_num: int, index: str, annual_rate: str, duration: int,
                     funda_rating: str, safe_plan: str):
     detail_response: requests.Response = requests.get(detail_url)
     detail_html_soup: bs4.BeautifulSoup = bs4.BeautifulSoup(detail_response.text, 'html.parser')
@@ -133,9 +133,8 @@ def unsecured_bonds(detail_url: str, workbook, worksheet, row_num: int, index: s
                 months_in_operation: int = 12 * years + months
             else:
                 intros.append(line.text)
-    write_row_in_xlsx(workbook, worksheet, row_num, int(index), borrower, float(annual_rate), duration,
-                      safe_plan, limit, credit_rating, '\n'.join(intros),
-                      funda_rating, months_in_operation, bank_or_insurance, card_or_savings_bank)
+    return row_num, int(index), borrower, float(annual_rate), duration, safe_plan, limit, credit_rating, '\n'.join(
+        intros), funda_rating, months_in_operation, bank_or_insurance, card_or_savings_bank
 
 
 def main():
@@ -145,9 +144,9 @@ def main():
     products: bs4.element.Tag = list_html_soup.find('div', id='general_merchandise')
     product_titles: bs4.element.ResultSet = products.find_all('span', class_='merchandise-idx')
 
-    workbook, worksheet = create_custom_workbook()
     row_num: int = 0
     page_info_list: List[tuple] = []
+    excel_rows: List[tuple] = []
     for title in product_titles:  # title: bs4.element.Tag
         body: bs4.element.Tag = title.parent.parent.parent.next_sibling.next_sibling
         children: bs4.element.ResultSet = body.find_all('div')
@@ -182,10 +181,14 @@ def main():
         # URL
         detail_url: str = 'https://www.funda.kr/v2/invest/?page=' + index
         page_info: tuple = (
-            detail_url, workbook, worksheet, row_num, index, annual_rate, duration, funda_rating, safe_plan,
+            detail_url, row_num, index, annual_rate, duration, funda_rating, safe_plan,
         )
         page_info_list.append(page_info)
-        unsecured_bonds(*page_info)
+        excel_row: tuple = unsecured_bonds(*page_info)
+        excel_rows.append(excel_row)
+    workbook, worksheet = create_custom_workbook()
+    for excel_row in excel_rows:  # excel_row: tuple
+        write_row_in_xlsx(workbook, worksheet, *excel_row)
     worksheet.set_default_row(35)  # partially show the third row of store info
     worksheet.set_row(0, 14.4)  # reset header row height
     workbook.close()
